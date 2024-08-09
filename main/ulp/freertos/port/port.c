@@ -256,3 +256,8 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 #endif /* #if ( configCHECK_FOR_STACK_OVERFLOW > 0 ) */
 /*-----------------------------------------------------------*/
+
+void vApplicationIdleHook(void)
+{
+	rv_utils_wait_for_intr();
+}
