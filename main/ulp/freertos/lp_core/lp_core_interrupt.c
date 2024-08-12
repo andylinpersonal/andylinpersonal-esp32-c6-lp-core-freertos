@@ -21,7 +21,7 @@ void ulp_lp_core_lp_timer_intr_handler_wrapper()
 
 #if SOC_LP_CORE_SINGLE_INTERRUPT_VECTOR
 
-static void *s_intr_handlers[] = {
+static const void *s_intr_handlers[] = {
     ulp_lp_core_lp_io_intr_handler,
     ulp_lp_core_lp_i2c_intr_handler,
     0, // ulp_lp_core_lp_uart_intr_handler TODO: Ignored under FreeRTOS due to spurious interrupt...
@@ -47,4 +47,5 @@ void ulp_lp_core_intr_handler(void)
 		}
 	}
 }
-#endif
+
+#endif // SOC_LP_CORE_SINGLE_INTERRUPT_VECTOR
