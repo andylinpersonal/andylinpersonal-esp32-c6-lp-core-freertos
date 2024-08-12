@@ -31,6 +31,8 @@
 #ifndef PORTMACRO_H
 #define PORTMACRO_H
 
+#include <riscv/csr.h>
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
     extern "C" {
@@ -111,6 +113,8 @@
 
     /* Critical section management. */
 #define portCRITICAL_NESTING_IN_TCB    0
+
+#define portIN_ISR_CONTEXT()                                       RV_READ_CSR(mip)
 
 #define portDISABLE_INTERRUPTS()                                   __asm volatile ( "csrc mstatus, 8" )
 #define portENABLE_INTERRUPTS()                                    __asm volatile ( "csrs mstatus, 8" )

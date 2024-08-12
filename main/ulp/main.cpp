@@ -1,7 +1,9 @@
 #include "lp_common.h"
 
 #include <riscv/rv_utils.h>
+extern "C" {
 #include <ulp_lp_core_print.h>
+}
 #include <ulp_lp_core_utils.h>
 
 /* FreeRTOS includes. */
@@ -12,23 +14,25 @@
 #include <timers.h>
 
 /* Standard includes. */
-#include <stdatomic.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
+#include <atomic>
+#include <bitset>
+#include <cstdint>
+#include <cstring>
 
-ATOMIC(bool) lp_core_started = false;
-ATOMIC(bool) hp_core_init    = false;
-uint64_t lp_core_mcycle      = 0;
+extern "C" {
+constinit bool          lp_core_started = false;
+constinit volatile bool hp_core_init    = false;
+constinit uint64_t      lp_core_mcycle  = 0;
+}
 
-static const char TAG[] = "ulp";
+static constexpr const char TAG[] = "ulp";
 
 /*-----------------------------------------------------------*/
-static StaticSemaphore_t print_lock_buffer;
-static SemaphoreHandle_t print_lock = NULL;
-static StaticTimer_t     test_timer_buffer;
-static StaticTask_t      test_task_tcb;
-static const char        test_task_name[] = "lp-test";
+static StaticSemaphore_t           print_lock_buffer;
+static constinit SemaphoreHandle_t print_lock = NULL;
+static StaticTimer_t               test_timer_buffer;
+static StaticTask_t                test_task_tcb;
+static constexpr const char        test_task_name[] = "lp-test";
 
 static StackType_t __attribute__((aligned(portBYTE_ALIGNMENT), section(".stack"))) test_task_stack[192U];
 
@@ -49,8 +53,66 @@ static void test_timer_func(TimerHandle_t htimer)
 
 #define WAIT_RATIO 3
 
+class A
+{
+public:
+	A()
+	{
+		lp_core_print_str(__func__);
+		lp_core_print_str("\n");
+		m_some_data[1] = 1;
+		m_some_data[3] = 1;
+	}
+
+	virtual void test() = 0;
+
+protected:
+	~A()
+	{
+		lp_core_print_str(__func__);
+		lp_core_print_str("\n");
+	}
+
+	std::bitset<4> m_some_data;
+};
+
+class B : public A
+{
+public:
+	B()
+	{
+		lp_core_print_str(__func__);
+		lp_core_print_str("\n");
+	}
+	// ~B() { lp_core_print_str(__func__); 	lp_core_print_str("\n"); }
+
+	void test() override
+	{
+		if (!m_some_data[1]) {
+			abort();
+		}
+	}
+};
+
+static B s_tester;
+static B s_tester0 __attribute__((init_priority(111)));
+
+void some_ctor() __attribute__((constructor(101), used));
+void some_ctor()
+{
+	lp_core_print_str(__func__);
+	lp_core_print_str("\n");
+}
+
 static void test_task_func(void *)
 {
+	s_tester.test();
+	s_tester0.test();
+
+	// Will call abort() during runtime
+	static B local_tester;
+	local_tester.test();
+
 	print_lock = xSemaphoreCreateCountingStatic(WAIT_RATIO, 0, &print_lock_buffer);
 
 	TimerHandle_t h_timer =
@@ -70,11 +132,13 @@ static void test_task_func(void *)
 		for (size_t i = 0; i < WAIT_RATIO; i++) {
 			xSemaphoreTake(print_lock, portMAX_DELAY);
 		}
-		atomic_store(&lp_core_started, 1);
+
+		std::atomic_ref<bool>(lp_core_started).store(true);
 	}
 }
 /*-----------------------------------------------------------*/
 
+extern "C" {
 extern int end[];
 extern int __stack_top[];
 
@@ -93,5 +157,6 @@ int main(void)
 	/* Start the scheduler. */
 	vTaskStartScheduler();
 	abort();
+}
 }
 /*-----------------------------------------------------------*/

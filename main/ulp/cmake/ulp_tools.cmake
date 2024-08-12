@@ -23,7 +23,7 @@ macro(__get_component_include_path)
             continue()
         endif()
 
-        list(APPEND component_includes   -I${include})
+        list(APPEND component_includes -I${include})
         list(APPEND ULP_COMPONENT_INCLUDES ${include})
     endforeach()
 
@@ -61,6 +61,8 @@ function(ulp_apply_default_sources ulp_app_name)
     list(APPEND ULP_PREPRO_ARGS -I${IDF_PATH}/components/esp_system/ld)
 
     target_include_directories(${ulp_app_name} PRIVATE ${ULP_COMPONENT_INCLUDES})
+
+    target_compile_options(${ulp_app_name} PUBLIC -fstack-usage)
 
     # Pre-process the linker script
     set(ULP_LD_TEMPLATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/ld/lp_core_riscv.ld")
@@ -105,10 +107,14 @@ function(ulp_apply_default_sources ulp_app_name)
     # Override files
     list(APPEND ULP_S_SOURCES
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/abort.c"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/assert.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/int64.c"
+        # "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/locks.c"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/malloc.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/libc/string.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/start.S"
-        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/lp_core_interrupt.c")
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/lp_core_interrupt.c"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/lp_core_startup_wrapper.c")
 
     set(target_folder ${IDF_TARGET})
 
@@ -136,13 +142,40 @@ function(ulp_apply_default_sources ulp_app_name)
     set_source_files_properties(
         "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_utils.c"
         PROPERTIES
-            COMPILE_DEFINITIONS "abort=abort__replaced")
+        COMPILE_DEFINITIONS "abort=abort__replaced")
+
+    set_source_files_properties(
+        "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_startup.c"
+        PROPERTIES
+        COMPILE_DEFINITIONS "main=premain"
+    )
 
     set_source_files_properties(
         "${IDF_PATH}/components/ulp/lp_core/lp_core/vector.S"
         PROPERTIES
-            COMPILE_DEFINITIONS "_panic_handler=_panic_handler__real;_interrupt_handler=_interrupt_handler__replaced")
+        COMPILE_DEFINITIONS "_panic_handler=_panic_handler__real;_interrupt_handler=_interrupt_handler__replaced")
 endfunction()
+
+function(ulp_add_cxx ulp_app_name)
+    if(CONFIG_ULP_LP_CORE_FREERTOS)
+        list(APPEND ULP_S_SOURCES
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/cxx/init.cpp"
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/cxx/pure.cpp"
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/cxx/static_guard.cpp"
+        )
+
+        target_sources(${ulp_app_name} PRIVATE ${ULP_S_SOURCES})
+
+        target_compile_options(${ulp_app_name}
+            PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti -fno-exceptions>)
+
+        # target_link_options(${ulp_app_name} PRIVATE "-Wl,--fatal-warnings")
+        target_compile_options(${ulp_app_name} PUBLIC "-nolibc")
+        target_link_options(${ulp_app_name} PUBLIC "-nolibc")
+    else()
+        message(FATAL_ERROR "Not yet implemented baremetal variant of c++ supporting library")
+    endif(CONFIG_ULP_LP_CORE_FREERTOS)
+endfunction(ulp_add_cxx)
 
 function(ulp_add_freertos ulp_app)
     set(CONFIG_ULP_LP_CORE_FREERTOS ON PARENT_SCOPE)
