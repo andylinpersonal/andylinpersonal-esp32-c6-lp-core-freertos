@@ -265,7 +265,9 @@ task_name_placeholder:
 _panic_handler:
     portcontextSAVE_EXCEPTION_CONTEXT
     /* a0 now contains mcause. */
-    li  t0, 11                           /* 11 == environment call. */
+    lw   t0, pxCurrentTCB
+    beqz t0, other_exception            /* Skip RTOS-specific part if not initialized yet*/
+    li  t0, 11                          /* 11 == environment call. */
     bne a0, t0, other_exception         /* Not an M environment call, so some other exception. */
     call vTaskSwitchContext
     portcontextRESTORE_CONTEXT

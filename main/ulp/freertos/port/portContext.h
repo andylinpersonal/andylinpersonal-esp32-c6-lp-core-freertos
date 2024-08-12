@@ -108,7 +108,9 @@ store_x t0, portMSTATUS_OFFSET * portWORD_SIZE(sp)
 portasmSAVE_ADDITIONAL_REGISTERS /* Defined in freertos_risc_v_chip_specific_extensions.h to save any registers unique to the RISC-V implementation. */
 
 load_x t0, pxCurrentTCB          /* Load pxCurrentTCB. */
+beqz   t0, 1f                    /* Only save sp when pxCurrentTCB is not NULL */
 store_x sp, 0(t0)                /* Write sp to first TCB member. */
+1:
 
 .endm
 /*-----------------------------------------------------------*/
@@ -119,7 +121,11 @@ csrr a0, mcause
 csrr a1, mepc
 addi a1, a1, 4          /* Synchronous so update exception return address to the instruction after the instruction that generated the exception. */
 store_x a1, 0(sp)       /* Save updated exception return address. */
+
+load_x t1, pxCurrentTCB   /* Load pxCurrentTCB. */
+beqz   t1, 2f             /* Skip switching sp if pxCurrentTCB == NULL */
 load_x sp, xISRStackTop /* Switch to ISR stack. */
+2:
 .endm
 /*-----------------------------------------------------------*/
 
@@ -127,14 +133,19 @@ load_x sp, xISRStackTop /* Switch to ISR stack. */
 portcontextSAVE_CONTEXT_INTERNAL
 csrr a0, mcause
 csrr a1, mepc
+load_x t1, pxCurrentTCB   /* Load pxCurrentTCB. */
+beqz   t1, 2f             /* Skip restore sp if NULL */
 store_x a1, 0(sp)       /* Asynchronous interrupt so save unmodified exception return address. */
 load_x sp, xISRStackTop /* Switch to ISR stack. */
+2:
 .endm
 /*-----------------------------------------------------------*/
 
 .macro portcontextRESTORE_CONTEXT
-load_x t1, pxCurrentTCB /* Load pxCurrentTCB. */
-load_x sp, 0(t1)        /* Read sp from first TCB member. */
+load_x t2, pxCurrentTCB   /* Load pxCurrentTCB. */
+beqz   t2, 2f             /* Skip restore sp if NULL */
+load_x sp, 0(t2)          /* Read sp from first TCB member. */
+2:
 
 /* Load mepc with the address of the instruction in the task to run next. */
 load_x t0, 0(sp)
@@ -147,9 +158,11 @@ portasmRESTORE_ADDITIONAL_REGISTERS
 load_x t0, portMSTATUS_OFFSET * portWORD_SIZE(sp)
 csrw mstatus, t0                                             /* Required for MPIE bit. */
 
+beqz   t2, 3f /* Skip RTOS part if pxCurrentTCB == NULL */
 load_x t0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE(sp)   /* Obtain xCriticalNesting value for this task from task's stack. */
 load_x t1, pxCriticalNesting                                 /* Load the address of xCriticalNesting into t1. */
 store_x t0, 0(t1)                                            /* Restore the critical nesting value for this task. */
+3:
 
 load_x x1,  1  * portWORD_SIZE(sp)
 load_x x3,  2  * portWORD_SIZE(sp)

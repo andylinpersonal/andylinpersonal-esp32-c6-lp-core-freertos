@@ -5,7 +5,6 @@
  */
 
 #include <stddef.h>
-#include <ulp_lp_core_print.h>
 
 int        premain(void) __attribute__((section(".text.startup"))); // pre-main and post-main handler
 extern int main(void);                                              // int main(void);
@@ -24,9 +23,9 @@ extern fini_fn __fini_priority_array_end[];
 
 int premain(void)
 {
-	for (init_fn *init = __init_priority_array_start; init < __init_array_end; init++) {
-		if (*init != NULL) {
-			(*init)();
+	for (init_fn *ctor = __init_priority_array_start; ctor < __init_array_end; ctor++) {
+		if (*ctor != NULL) {
+			(*ctor)();
 		}
 	}
 

@@ -110,8 +110,8 @@ static void test_task_func(void *)
 	s_tester0.test();
 
 	// Will call abort() during runtime
-	static B local_tester;
-	local_tester.test();
+	// static B local_tester;
+	// local_tester.test();
 
 	print_lock = xSemaphoreCreateCountingStatic(WAIT_RATIO, 0, &print_lock_buffer);
 
@@ -144,6 +144,9 @@ extern int __stack_top[];
 
 int main(void)
 {
+	// Test pre-RTOS panic handling
+	// __asm__ volatile("unimp\n\t");
+
 	ulp_lp_core_delay_us(10000000);
 
 	lp_core_print_str("stack@0x");
