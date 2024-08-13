@@ -52,6 +52,8 @@
 #include <ulp_lp_core_interrupts.h>
 #endif
 
+#include <ulp_lp_core_utils.h>
+
 /* Let the user override the pre-loading of the initial RA. */
 #ifdef configTASK_RETURN_ADDRESS
 #define portTASK_RETURN_ADDRESS configTASK_RETURN_ADDRESS
@@ -259,5 +261,5 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 void vApplicationIdleHook(void)
 {
-	rv_utils_wait_for_intr();
+	ulp_lp_core_wait_for_intr();
 }

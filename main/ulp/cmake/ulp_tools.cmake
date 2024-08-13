@@ -50,10 +50,12 @@ function(__ulp_add_libc ulp_app_name)
     list(APPEND ULP_S_SOURCES
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/abort.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/assert.c"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/exit.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/int64.c"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/malloc.c"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/start.S"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/startup.c" # premain functions
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/string.c"
-        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../libc/premain.c" # premain functions
     )
 
     target_sources(${ulp_app_name} PRIVATE ${ULP_S_SOURCES})
@@ -62,10 +64,6 @@ function(__ulp_add_libc ulp_app_name)
     set_source_files_properties(
         "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_utils.c"
         PROPERTIES COMPILE_DEFINITIONS "abort=abort__replaced")
-
-    set_source_files_properties(
-        "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_startup.c"
-        PROPERTIES COMPILE_DEFINITIONS "main=premain")
 endfunction(__ulp_add_libc)
 
 function(ulp_apply_default_sources ulp_app_name)
@@ -126,7 +124,6 @@ function(ulp_apply_default_sources ulp_app_name)
         "${IDF_PATH}/components/ulp/lp_core/lp_core/port/${IDF_TARGET}/vector_table.S"
         "${IDF_PATH}/components/ulp/lp_core/shared/ulp_lp_core_memory_shared.c"
         "${IDF_PATH}/components/ulp/lp_core/shared/ulp_lp_core_lp_timer_shared.c"
-        "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_startup.c"
         "${IDF_PATH}/components/ulp/lp_core/lp_core/lp_core_utils.c"
         "${IDF_PATH}/components/hal/uart_hal_iram.c"
         "${IDF_PATH}/components/hal/uart_hal.c"
@@ -140,7 +137,6 @@ function(ulp_apply_default_sources ulp_app_name)
     if(CONFIG_ULP_LP_CORE_FREERTOS)
         # Override files
         list(APPEND ULP_S_SOURCES
-            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/start.S"
             "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../freertos/lp_core/lp_core_interrupt.c")
     else()
         list(APPEND ULP_S_SOURCES

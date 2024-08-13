@@ -22,7 +22,7 @@ __start:
 	la sp, __stack_top
 
 .option push
-	/* prevent as from converting the following instruction into nop-like mv gp,gp ... */
+	/* prevent AS from turing the following instruction into nop-like `mv gp,gp` */
 .option norelax
 	la gp, __global_pointer$
 .option pop
